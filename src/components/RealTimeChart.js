@@ -3,6 +3,7 @@ import { Line } from "react-chartjs-2";
 
 const lineChartOptions = {
     responsive: true,
+    maintainAspectRatio: false,
     showLines: true,
     tooltips: {
         enabled:true
@@ -11,11 +12,17 @@ const lineChartOptions = {
         xAxes: [
             {
                 ticks: {
-                    autoSkip: true,
-                    maxTicksLimit: 10
+                    autoSkip: true
                 }
             }
-        ]
+        ],
+        yAxes: [{
+            scaleLabel: {
+                display: true,
+                labelString: 'Time (ms)'
+            }
+        }]
+
     },
 };
 
@@ -24,12 +31,15 @@ class RealTimeChart extends Component {
         super(props);
     }
     
+    
+
     render() {
         return (
           <div>
-            <Line 
+            <Line
                 data={this.props.lineChartData}
-                options={lineChartOptions} 
+                options={lineChartOptions}
+                height={this.props.height}
             />
           </div>
         );

@@ -6,24 +6,26 @@ import  RealTimeChart from './components/RealTimeChart.js'
 class App extends Component {
   constructor(props) {
     super(props);
+    this.MAX_POINTS = 50;
     this.state = {
       lineChartData: {
-        labels: [],
+        labels: Array(this.MAX_POINTS).fill(''),
         datasets: [
           {
             type: "line",
-            label: "test",
-            backgroundColor: "rgba(0, 0, 0, 0)",
-            borderColor: "rgba(75,192,192,1)",
+            label: "Ping 192.168.0.1",
+            fill: 'start',
+            backgroundColor: "rgba(201, 203, 207, 0.6)",
+            borderColor: "rgb(0, 0, 0)",
             pointBackgroundColor: "#fff",
-            pointBorderColor: "rgba(75,192,192,1)",
+            pointBorderColor: "rgb(0, 0, 0)",
             borderWidth: "2",
-            lineTension: 0.45,
-            data: [1]
+            lineTension: 0.0001,
+            data: []
           },
         ]
       }
-    }
+    };
     this.eventSource = new EventSource("http://localhost:4000/ping");
     this.eventSource.onopen = e => console.log(e);
   }
@@ -37,21 +39,52 @@ class App extends Component {
   }
 
   pingEventMessageHandler(event) {
+    
     try{
       var ping = this.parseUnixPingString(event.data)
-      console.log(ping)
+      const lastDataset = this.state.lineChartData.datasets[0];
+      const newDataset = { 
+        ...lastDataset,
+        data: [
+          ...lastDataset.data.splice(-(this.MAX_POINTS -1)),
+          ping.time
+        ]
+      };
+
+      const timestampAsDate = new Date(ping.timestamp * 1000);
+
+      var lastLabels;
+      if(this.state.lineChartData.labels[this.state.lineChartData.labels.length - 1] == ''){
+        //var nextInd = this.state.lineChartData.labels.findIndex("");
+        lastLabels = [
+          ...this.state.lineChartData.labels.slice(0, newDataset.data.length-1),
+          timestampAsDate.toLocaleTimeString(),
+          ...this.state.lineChartData.labels.slice(newDataset.data.length, this.MAX_POINTS),
+        ]
+      } else {
+        lastLabels = [
+          ...this.state.lineChartData.labels.slice(-(this.MAX_POINTS -1)),
+          timestampAsDate.toLocaleTimeString()
+        ]
+      }
+
+      const newChartData = {
+        datasets: [newDataset],
+        labels: lastLabels
+      }
+
+      this.setState({lineChartData: newChartData});
     } catch (error){
       console.error(error);
     }
   }
 
-
   parseUnixPingString(pingString) {
-    var re = /^\[(\d+\.\d+)\] (\d+) bytes from (\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}): icmp_seq=(\d+) ttl=(\d+) time=(.+)$/;
+    var re = /^\[(\d+\.\d+)\] (\d+) bytes from (\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}): icmp_seq=(\d+) ttl=(\d+) time=(.+) ms$/;
     var match = pingString.match(re)
     return {
       string: match[0],
-      time: match[1],
+      timestamp: match[1],
       bytes: match[2],
       ip: match[3],
       icmp_seq: match[4],
@@ -59,25 +92,15 @@ class App extends Component {
       time: match[6],
     }
   }
-
+  
   render() {
     return (
       <div className="App">
-        <header className="App-header">
-          <img src={logo} className="App-logo" alt="logo" />
-          <p>
-            Edit <code>src/App.js</code> and save to reload.
-          </p>
-          <a
-            className="App-link"
-            href="https://reactjs.org"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Learn React
-          </a>
+        <header>
+          <h1>Ping Visualizer</h1>
         </header>
         <RealTimeChart 
+          height={500}
           lineChartData={this.state.lineChartData}
         />
       </div>
