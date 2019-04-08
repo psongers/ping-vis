@@ -15,9 +15,10 @@ app.get('/ping', (req, res)=> {
         "Connection": "keep-alive",
         "Access-Control-Allow-Origin": "*"
     });
-
     // Default High Watermark buffersize for stdout appears fine here
-    ping = spawn('ping', ['-D', '192.168.0.1']);
+    ping = spawn('ping', ['-D', req.query.ip]);
+    console.log(req.query.ip);
+
     ping.stdout.on('data', (chunk) => {
         res.write('data: ')
         res.write(chunk);
@@ -25,6 +26,7 @@ app.get('/ping', (req, res)=> {
     });
     ping.on('close', (code) => {
         console.log('Ping ended')
+        req.destroy()
     });
     // When the client closes the stream (TCP connection I believe)
     // the callback will be run

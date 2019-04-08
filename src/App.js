@@ -1,45 +1,46 @@
 import React, { Component } from 'react';
-import logo from './logo.svg';
 import './App.css';
 import  RealTimeChart from './components/RealTimeChart.js'
+import PingForm from './components/PingForm.js'
 
 class App extends Component {
   constructor(props) {
     super(props);
     this.MAX_POINTS = 50;
     this.state = {
-      lineChartData: {
-        labels: Array(this.MAX_POINTS).fill(''),
-        datasets: [
-          {
-            type: "line",
-            label: "Ping 192.168.0.1",
-            fill: 'start',
-            backgroundColor: "rgba(201, 203, 207, 0.6)",
-            borderColor: "rgb(0, 0, 0)",
-            pointBackgroundColor: "#fff",
-            pointBorderColor: "rgb(0, 0, 0)",
-            borderWidth: "2",
-            lineTension: 0.0001,
-            data: []
-          },
-        ]
-      }
+      lineChartData: null,
+      eventSource: null,
+      address: '192.168.0.1',
+      play: false
     };
-    this.eventSource = new EventSource("http://localhost:4000/ping");
-    this.eventSource.onopen = e => console.log(e);
+    this.onChangeHandler = this.onChangeHandler.bind(this);
+    this.onClickHandler = this.onClickHandler.bind(this);
   }
 
-  componentDidMount() {
-    this.eventSource.onmessage = e => this.pingEventMessageHandler(e);
-  }
-
-  componentWillUnmount() {
-    this.eventSource.close();
+  initializeLineChartData(){
+    return {
+      labels: Array(this.MAX_POINTS).fill(''),
+      datasets: [
+        {
+          type: "line",
+          label: `Ping ${this.state.address}`,
+          fill: 'start',
+          backgroundColor: "rgba(201, 203, 207, 0.6)",
+          borderColor: "rgb(0, 0, 0)",
+          pointBackgroundColor: "#fff",
+          pointBorderColor: "rgb(0, 0, 0)",
+          borderWidth: "2",
+          lineTension: 0.0001,
+          data: []
+        },
+      ]
+    }
   }
 
   pingEventMessageHandler(event) {
-    
+    if(this.state.play === false){
+      return;
+    }
     try{
       var ping = this.parseUnixPingString(event.data)
       const lastDataset = this.state.lineChartData.datasets[0];
@@ -55,7 +56,6 @@ class App extends Component {
 
       var lastLabels;
       if(this.state.lineChartData.labels[this.state.lineChartData.labels.length - 1] == ''){
-        //var nextInd = this.state.lineChartData.labels.findIndex("");
         lastLabels = [
           ...this.state.lineChartData.labels.slice(0, newDataset.data.length-1),
           timestampAsDate.toLocaleTimeString(),
@@ -80,7 +80,7 @@ class App extends Component {
   }
 
   parseUnixPingString(pingString) {
-    var re = /^\[(\d+\.\d+)\] (\d+) bytes from (\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}): icmp_seq=(\d+) ttl=(\d+) time=(.+) ms$/;
+    var re = /^\[(\d+\.\d+)\] (\d+) bytes from (.+): icmp_seq=(\d+) ttl=(\d+) time=(.+) ms$/;
     var match = pingString.match(re)
     return {
       string: match[0],
@@ -93,6 +93,33 @@ class App extends Component {
     }
   }
   
+  onChangeHandler(event) {
+    this.setState({
+      [event.target.name]: event.target.value
+    });
+  }
+
+  onClickHandler(event) {
+    switch(event.target.name) {
+      case 'play':
+        this.setState({play: !this.state.play});
+        break;
+      case 'start':
+        if(this.state.eventSource)
+          this.state.eventSource.close();
+        this.setState({
+          eventSource: new EventSource(`http://localhost:4000/ping?ip=${this.state.address}`),
+          lineChartData: this.initializeLineChartData(),
+          play: true
+        }, () => {
+          this.state.eventSource.onmessage = e => this.pingEventMessageHandler(e);
+        });
+        break;
+      default:
+      console.error('Invalid event');
+    }
+  }
+
   render() {
     return (
       <div className="App">
@@ -102,6 +129,11 @@ class App extends Component {
         <RealTimeChart 
           height={500}
           lineChartData={this.state.lineChartData}
+        />
+        <PingForm
+          addressValue={this.state.address}
+          onChangeHandler={this.onChangeHandler}
+          onClickHandler={this.onClickHandler}
         />
       </div>
     );

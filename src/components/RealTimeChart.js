@@ -22,7 +22,6 @@ const lineChartOptions = {
                 labelString: 'Time (ms)'
             }
         }]
-
     },
 };
 
@@ -30,8 +29,6 @@ class RealTimeChart extends Component {
     constructor(props) {
         super(props);
     }
-    
-    
 
     render() {
         return (
